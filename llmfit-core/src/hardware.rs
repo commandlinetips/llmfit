@@ -598,6 +598,7 @@ impl SystemSpecs {
             return None;
         }
 
+        let mut slot_hints: Vec<String> = Vec::new();
         let entries = std::fs::read_dir("/sys/class/drm").ok()?;
         for entry in entries.flatten() {
             let card_path = entry.path();
@@ -627,8 +628,17 @@ impl SystemSpecs {
                 vram_gb = Some(vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
             }
 
+            if let Ok(uevent) = std::fs::read_to_string(device_path.join("uevent")) {
+                for line in uevent.lines() {
+                    if let Some(slot) = line.strip_prefix("PCI_SLOT_NAME=") {
+                        slot_hints.push(slot.to_string());
+                    }
+                }
+            }
+
             // Try to get GPU name from lspci
             let gpu_name = Self::get_amd_gpu_name_lspci();
+            let gpu_name = Self::get_amd_gpu_name_lspci(&slot_hints);
             let name = gpu_name.unwrap_or_else(|| "AMD GPU".to_string());
 
             // If we still don't have VRAM, try to estimate from name
@@ -652,11 +662,26 @@ impl SystemSpecs {
     }
 
     /// Extract AMD GPU name from lspci output.
-    fn get_amd_gpu_name_lspci() -> Option<String> {
+    fn get_amd_gpu_name_lspci(slot_hints: &[String]) -> Option<String> {
         let text = Self::lspci_output()?;
+
+        // First pass: match exact slot (e.g. "0000:01:00.0"), if available.
+        for slot in slot_hints {
+            for line in text.lines() {
+                let lower = line.to_lowercase();
+                if line.starts_with(slot)
+                    && (lower.contains("vga") || lower.contains("3d") || lower.contains("display"))
+                    && (lower.contains("amd") || lower.contains("ati"))
+                    && let Some(model) = Self::extract_model_from_lspci_line(line)
+                {
+                    return Some(model);
+                }
+            }
+        }
+
+        // Fallback: any AMD/ATI display controller line.
         for line in text.lines() {
             let lower = line.to_lowercase();
-            // VGA compatible controller or 3D controller with AMD/ATI
             if (lower.contains("vga") || lower.contains("3d"))
                 && (lower.contains("amd") || lower.contains("ati"))
                 && let Some(model) = Self::extract_model_from_lspci_line(line)
@@ -672,7 +697,7 @@ impl SystemSpecs {
     fn get_nvidia_gpu_name_lspci(slot_hints: &[String]) -> Option<String> {
         let text = Self::lspci_output()?;
 
-        // First pass: match exact slot (e.g. "01:00.0"), if available.
+        // First pass: match exact slot (e.g. "0000:01:00.0"), if available.
         for slot in slot_hints {
             for line in text.lines() {
                 let lower = line.to_lowercase();
