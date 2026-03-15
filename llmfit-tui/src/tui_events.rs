@@ -187,9 +187,6 @@ fn handle_search_mode(app: &mut App, key: KeyEvent) {
             app.clear_search();
         }
 
-        // Allow copy while searching
-        KeyCode::Char('y') => app.copy_selected_model_name(),
-
         // Allow navigation while searching
         KeyCode::Up => app.move_up(),
         KeyCode::Down => app.move_down(),
