@@ -243,6 +243,12 @@ impl SystemSpecs {
             }
         }
 
+        // When both discrete and integrated GPUs are present, drop the
+        // integrated GPUs so the discrete GPU becomes primary. This applies
+        // globally, not just to the Windows WMI path, to handle cases where
+        // an iGPU is detected via Vulkan or APU detection alongside a dGPU.
+        gpus = Self::prefer_discrete_gpus(gpus);
+
         // Sort by VRAM descending so the best GPU is primary
         gpus.sort_by(|a, b| {
             let va = a.vram_gb.unwrap_or(0.0);
@@ -945,6 +951,11 @@ impl SystemSpecs {
     fn is_integrated_gpu_name(name: &str) -> bool {
         let lower = name.to_lowercase();
 
+        // Explicitly tagged as integrated (e.g. from APU detection path)
+        if lower.contains("(integrated)") {
+            return true;
+        }
+
         // Intel integrated: UHD, HD Graphics, Iris (but NOT Intel Arc discrete)
         if lower.contains("intel") {
             return lower.contains("uhd")
@@ -1626,12 +1637,14 @@ fn detect_running_in_wsl() -> bool {
 /// All Ryzen AI APUs have integrated Radeon GPUs that share system memory.
 fn is_amd_unified_memory_apu(cpu_name: &str) -> bool {
     let lower = cpu_name.to_lowercase();
-    // All "Ryzen AI" branded APUs use unified/shared memory.
-    // Examples:
+    // Only "Ryzen AI MAX" / "Ryzen AI MAX+" APUs have a large unified memory
+    // pool shared between CPU and GPU (similar to Apple Silicon).
+    // Regular Ryzen AI chips (e.g. HX 370, HX 365) have a standard small iGPU
+    // and should NOT be treated as unified-memory systems.
+    // Examples that match:
     //   "AMD Ryzen AI MAX+ 395 w/ Radeon 8060S"
-    //   "AMD Ryzen AI 9 HX 370 w/ Radeon 890M"
-    //   "AMD Ryzen AI 7 350"
-    if lower.contains("ryzen ai") {
+    //   "AMD Ryzen AI MAX 390"
+    if lower.contains("ryzen ai max") {
         return true;
     }
     false
@@ -2694,13 +2707,16 @@ GPU id = 1 (NVIDIA GeForce RTX 4090)
 
     #[test]
     fn test_amd_unified_memory_apu_detection() {
+        // Only Ryzen AI MAX / MAX+ have true unified memory
         assert!(super::is_amd_unified_memory_apu(
             "AMD Ryzen AI MAX+ 395 w/ Radeon 8060S"
         ));
-        assert!(super::is_amd_unified_memory_apu(
+        assert!(super::is_amd_unified_memory_apu("AMD Ryzen AI MAX 390"));
+        // Regular Ryzen AI chips are NOT unified memory APUs
+        assert!(!super::is_amd_unified_memory_apu(
             "AMD Ryzen AI 9 HX 370 w/ Radeon 890M"
         ));
-        assert!(super::is_amd_unified_memory_apu("AMD Ryzen AI 7 350"));
+        assert!(!super::is_amd_unified_memory_apu("AMD Ryzen AI 7 350"));
         assert!(!super::is_amd_unified_memory_apu("AMD Ryzen 9 7950X"));
         assert!(!super::is_amd_unified_memory_apu("Intel Core i9-14900K"));
     }
@@ -2937,6 +2953,10 @@ GPU id = 1 (NVIDIA GeForce RTX 4090)
         ));
         assert!(!SystemSpecs::is_integrated_gpu_name(
             "Intel(R) Arc(TM) B580"
+        ));
+        // Explicit "(integrated)" tag from APU detection
+        assert!(SystemSpecs::is_integrated_gpu_name(
+            "AMD Ryzen AI 9 HX 370 w/ Radeon 890M (integrated)"
         ));
     }
 
