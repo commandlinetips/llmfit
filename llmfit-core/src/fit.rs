@@ -210,12 +210,13 @@ pub struct ModelFit {
     pub moe_offloaded_gb: Option<f64>, // GB of inactive experts offloaded to RAM
     pub score: f64,                    // weighted composite score 0-100
     pub score_components: ScoreComponents,
-    pub estimated_tps: f64,         // baseline estimated tokens per second
-    pub best_quant: String,         // best quantization for this hardware
-    pub use_case: UseCase,          // inferred use case category
-    pub runtime: InferenceRuntime,  // inference runtime (MLX or llama.cpp)
-    pub installed: bool,            // model found in a local runtime provider
-    pub fits_with_turboquant: bool, // TooTight at fp16 KV but fits with TurboQuant KV
+    pub estimated_tps: f64,            // baseline estimated tokens per second
+    pub best_quant: String,            // best quantization for this hardware
+    pub use_case: UseCase,             // inferred use case category
+    pub runtime: InferenceRuntime,     // inference runtime (MLX or llama.cpp)
+    pub installed: bool,               // model found in a local runtime provider
+    pub fits_with_turboquant: bool,    // TooTight at fp16 KV but fits with TurboQuant KV
+    pub effective_context_length: u32, // context length used for memory estimation
 }
 
 impl ModelFit {
@@ -550,6 +551,7 @@ impl ModelFit {
             runtime,
             installed: false, // set later by App after provider detection
             fits_with_turboquant,
+            effective_context_length: estimation_ctx,
         }
     }
 
@@ -1986,6 +1988,8 @@ mod tests {
         let baseline = ModelFit::analyze(&model, &system);
         let capped = ModelFit::analyze_with_context_limit(&model, &system, Some(4096));
 
+        assert_eq!(baseline.effective_context_length, DEFAULT_ESTIMATION_CTX);
+        assert_eq!(capped.effective_context_length, 4096);
         assert!(capped.memory_required_gb < baseline.memory_required_gb);
         assert!(capped.notes.iter().any(|n| n.contains("Context capped at")));
     }
