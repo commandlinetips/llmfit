@@ -49,6 +49,13 @@ If Scoop is not installed, follow the [Scoop installation guide](https://scoop.s
 ### macOS / Linux
 
 #### Homebrew
+
+Prebuilt binary (recommended, works on all macOS/Linux versions):
+```sh
+brew install AlexsJones/llmfit/llmfit
+```
+
+Or from the homebrew-core formula, which builds from source on macOS versions without a bottle:
 ```sh
 brew install llmfit
 ```
