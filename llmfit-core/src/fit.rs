@@ -591,7 +591,8 @@ impl ModelFit {
 /// Pure memory headroom scoring.
 /// - GPU (including Apple Silicon unified memory): can reach Perfect.
 /// - CpuOffload: caps at Good.
-/// - CpuOnly: caps at Marginal -- CPU-only inference is always a compromise.
+/// - CpuOnly: caps at Good -- no GPU acceleration so never Perfect, but a model
+///   that fits with comfortable headroom is genuinely runnable, not Marginal.
 fn score_fit(
     mem_required: f64,
     mem_available: f64,
@@ -630,8 +631,15 @@ fn score_fit(
             }
         }
         RunMode::CpuOnly => {
-            // CPU-only is always a compromise -- cap at Marginal
-            FitLevel::Marginal
+            // CPU-only never reaches Perfect (that requires a GPU), but a model
+            // that fits with comfortable headroom is genuinely runnable -- cap
+            // at Good rather than hiding every CPU-only model behind Marginal.
+            // (Matches the FitLevel::Good contract: "GPU tight, or CPU comfortable".)
+            if mem_available >= mem_required * 1.2 {
+                FitLevel::Good
+            } else {
+                FitLevel::Marginal
+            }
         }
     }
 }
@@ -1624,10 +1632,26 @@ mod tests {
     }
 
     #[test]
-    fn test_score_fit_cpu_caps_at_marginal() {
-        // CPU-only never reaches Perfect
+    fn test_score_fit_cpu_comfortable_is_good() {
+        // CPU-only with comfortable headroom (4 GB of 32 GB) is runnable -> Good.
+        // It never reaches Perfect (recommended 8 GB is met, but Perfect needs a GPU).
         let fit = score_fit(4.0, 32.0, 8.0, RunMode::CpuOnly);
+        assert_eq!(fit, FitLevel::Good);
+    }
+
+    #[test]
+    fn test_score_fit_cpu_tight_is_marginal() {
+        // CPU-only that only just fits (under the 1.2x headroom bar) stays Marginal.
+        let fit = score_fit(8.0, 8.5, 16.0, RunMode::CpuOnly);
         assert_eq!(fit, FitLevel::Marginal);
+    }
+
+    #[test]
+    fn test_score_fit_cpu_never_perfect() {
+        // Even with enormous headroom, CPU-only caps at Good (no GPU -> not Perfect).
+        let fit = score_fit(1.0, 64.0, 2.0, RunMode::CpuOnly);
+        assert_ne!(fit, FitLevel::Perfect);
+        assert_eq!(fit, FitLevel::Good);
     }
 
     #[test]
@@ -1674,8 +1698,10 @@ mod tests {
 
         // Should use CPU path
         assert_eq!(fit.run_mode, RunMode::CpuOnly);
-        // CPU-only caps at Marginal
-        assert_eq!(fit.fit_level, FitLevel::Marginal);
+        // CPU-only with comfortable headroom (7B in 16 GB) is runnable -> Good,
+        // and never Perfect (that requires a GPU).
+        assert_eq!(fit.fit_level, FitLevel::Good);
+        assert_ne!(fit.fit_level, FitLevel::Perfect);
     }
 
     #[test]
