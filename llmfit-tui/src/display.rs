@@ -682,6 +682,7 @@ fn system_json(specs: &SystemSpecs) -> serde_json::Value {
                 "backend": g.backend.label(),
                 "count": g.count,
                 "unified_memory": g.unified_memory,
+                "memory_bandwidth_gbps": llmfit_core::hardware::gpu_memory_bandwidth_gbps(&g.name),
             })
         })
         .collect();

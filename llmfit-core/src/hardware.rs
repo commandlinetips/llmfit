@@ -2124,6 +2124,19 @@ pub fn gpu_memory_bandwidth_gbps(name: &str) -> Option<f64> {
         return Some(448.0);
     }
 
+    // ── AMD unified-memory APUs (Strix Halo) ───────────────────────
+    // Ryzen AI MAX / MAX+ (Radeon 8050S/8060S): 256-bit LPDDR5X-8000.
+    // Names vary by detection path: lspci ("Strix Halo [Radeon ...]"),
+    // marketing ("Radeon 8060S"), or the cpu-derived fallback
+    // ("AMD Ryzen AI MAX+ 395 w/ Radeon 8060S (integrated)").
+    if lower.contains("8060s")
+        || lower.contains("8050s")
+        || lower.contains("strix halo")
+        || lower.contains("ryzen ai max")
+    {
+        return Some(256.0);
+    }
+
     // ── AMD Discrete (RDNA) ────────────────────────────────────────
     // RX 9000 series (RDNA 4)
     if lower.contains("9070 xt") {
