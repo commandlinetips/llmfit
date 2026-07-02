@@ -34,7 +34,8 @@
       "type": "string",
       "enum": [
         "vision",
-        "tool_use"
+        "tool_use",
+        "audio"
       ]
     },
     "modelFormat": {
