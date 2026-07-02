@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://llmfit.dev/schemas/hf_models.schema.json",
   "title": "llmfit HuggingFace model catalog",
-  "description": "Schema for data/hf_models.json and llmfit-core/data/hf_models.json",
+  "description": "Schema for llmfit-core/data/hf_models.json",
   "type": "array",
   "items": {
     "$ref": "#/$defs/model"
