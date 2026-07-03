@@ -46,15 +46,17 @@ body:
       required: true
 
   - type: textarea
-    id: system-output
+    id: doctor-output
     attributes:
-      label: System detection output
-      description: Paste the output of `llmfit system` (or the system bar from TUI mode).
+      label: Diagnostic report (`llmfit doctor`)
+      description: >
+        Paste the full output of `llmfit doctor` (v0.9.36+). It captures your
+        detected specs plus the raw nvidia-smi/rocm-smi/sysfs output detection
+        relies on — for hardware bugs this is usually all we need to reproduce
+        and write a regression test. On older versions paste `llmfit system`
+        instead.
       render: text
-      placeholder: |
-        CPU: AMD Ryzen 9 5900X (24 cores)
-        RAM: 32.0 GB
-        GPU: NVIDIA RTX 3090 (24 GB VRAM)
+      placeholder: Output of `llmfit doctor` (or `llmfit system` on older versions)
     validations:
       required: true
 
