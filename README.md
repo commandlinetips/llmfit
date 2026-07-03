@@ -1016,6 +1016,18 @@ If you're looking for a different approach, check out [llm-checker](https://gith
 
 ---
 
+## Code signing
+
+llmfit's Windows release binaries are digitally signed (Authenticode) via [SignPath.io](https://about.signpath.io/), with a free code signing certificate provided by the [SignPath Foundation](https://signpath.org/).
+
+Signing happens automatically in the [release pipeline](.github/workflows/release.yml): only artifacts built by GitHub Actions from this repository are submitted for signing, and signing requests are approved by the project maintainer ([@AlexsJones](https://github.com/AlexsJones)).
+
+**Code signing policy:** see the [SignPath Foundation code signing policy and terms](https://signpath.org/terms).
+
+**Privacy:** this program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. llmfit only contacts external services when you explicitly use the corresponding feature (e.g. model downloads, runtime provider queries, or the community leaderboard).
+
+---
+
 ## License
 
 MIT
